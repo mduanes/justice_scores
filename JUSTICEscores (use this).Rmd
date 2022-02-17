@@ -1,0 +1,380 @@
+---
+title: "JUSTICE scores"
+author: "Micah Shannon"
+date: "11/15/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# What are JUSTICE scores?
+
+JUSTICE scores are an attempt to measure the ideology of the supreme court over time. The data includes a score for each justice's vote that says it is either liberal or conservative. I've aggregated that by year and then subtracted the number of the conservative votes by the number of liberal votes divided by the total number of votes to give me a "JUSTICE score" (named after NOMINATE scores which measure congressional ideology). They range from -1-1, with a negative score being liberal and a positive score being conservative. 
+
+# All-time JUSTICE scores
+
+Click the lines on the legends to see progression of JUSTICE score for individual justices. Toggle the dots to disable/enable certain courts.
+
+```{r JUSTICEscoresall,echo=FALSE,message=FALSE,warning=FALSE,fig.width=15,fig.height=10,fig.align='right'}
+# Examining the ideology of supreme court justices
+# By Micah Shannon
+
+#load libraries
+library(tidyverse)
+library(lubridate)
+library(plotly)
+
+load("data/SCDB_Legacy_07_justiceCentered_Citation.RData")
+load("data/SCDB_2021_01_justiceCentered_Citation.RData")
+
+# filter out only decisions made by a signed opinion
+legacy <- SCDB_Legacy_07_justiceCentered_Citation %>%
+  filter(decisionType==1,vote==1|vote==2) %>%
+  mutate(court = chief,date=as.Date(dateDecision,format="%Y-%m-%d")) %>%
+  select(caseId,date,decisionDirection,vote,court,justiceName)
+
+modern <- SCDB_2021_01_justiceCentered_Citation %>%
+  filter(decisionType==1,vote==1|vote==2) %>%
+  mutate(court = chief,date=as.Date(dateDecision,format="%Y-%m-%d")) %>%
+  select(caseId,date,decisionDirection,vote,court,justiceName)
+
+# merge the new and old data
+d <- rbind(legacy,modern)
+
+# define the ideology of each justice's vote by case
+d2 <- d %>%
+  mutate(justice_vote=case_when(decisionDirection==1 & vote==1 ~ "Conservative",
+                                decisionDirection==2 & vote==2 ~ "Conservative",
+                                decisionDirection==2 & vote==1 ~ "Liberal",
+                                decisionDirection==1 & vote==2 ~ "Liberal",
+                            TRUE ~ "Unspecifiable"),
+         year=year(date),
+         # assign justices proper names and provide length of term
+         justice=case_when(
+                           justiceName=="JJay" ~ "Jay, John ( 10/19/1789 - 06/29/1795 )",
+                           justiceName=="JRutledge1" ~ "Rutledge, John ( 02/15/1790 - 03/05/1791 )",
+                           justiceName=="WCushing" ~ "Cushing, William ( 02/02/1790 - 09/13/1810 )",
+                           justiceName=="JWilson" ~ "Wilson, James ( 10/05/1789 - 08/21/1798 )",
+                           justiceName=="JBlair" ~ "Blair, John ( 02/02/1790 - 01/27/1796 )",
+                           justiceName=="JIredell" ~ "Iredell, James ( 05/12/1790 - 10/20/1799 )",
+                           justiceName=="TJohnson" ~ "Johnson, Thomas ( 09/19/1791 - 02/22/1793 )",
+                           justiceName=="WPaterson" ~ "Paterson, William ( 03/11/1793 - 09/09/1806 )",
+                           justiceName=="JRutledge2" ~ "Rutledge, John ( 08/12/1795 - 12/15/1795 )",
+                           justiceName=="SChase" ~ "Chase, Samuel ( 02/04/1796 - 06/19/1811 )",
+                           justiceName=="OEllsworth" ~ "Ellsworth, Oliver ( 03/08/1796 - 12/15/1800 )",
+                           justiceName=="BWashington" ~ "Washington, Bushrod ( 11/09/1798 - 11/26/1829 )",
+                           justiceName=="AMoore" ~ "Moore, Alfred ( 04/21/1800 - 01/26/1804 )",
+                           justiceName=="JMarshall" ~ "Marshall, John ( 02/04/1801 - 07/06/1835 )",
+                           justiceName=="WJohnson" ~ "Johnson, William ( 05/07/1804 - 08/04/1834 )",
+                           justiceName=="HBLivingston" ~ "Livingston, Henry ( 01/20/1807 - 03/18/1823 )",
+                           justiceName=="TTodd" ~ "Todd, Thomas ( 05/04/1807 - 02/07/1826 )",
+                           justiceName=="GDuvall" ~ "Duvall, Gabriel ( 11/23/1811 - 01/14/1835 )",
+                           justiceName=="JStory" ~ "Story, Joseph ( 02/03/1812 - 09/10/1845 )",
+                           justiceName=="SThompson" ~ "Thompson, Smith ( 09/01/1823 - 12/18/1843 )",
+                           justiceName=="RTrimble" ~ "Trimble, Robert ( 06/16/1826 - 08/25/1828 )",
+                           justiceName=="JMcLean" ~ "McLean, John ( 01/11/1830 - 04/04/1861 )",
+                           justiceName=="HBaldwin" ~ "Baldwin, Henry ( 01/18/1830 - 04/21/1844 )",
+                           justiceName=="JMWayne" ~ "Wayne, James ( 01/14/1835 - 07/05/1867 )",
+                           justiceName=="RBTaney" ~ "Taney, Roger ( 03/28/1836 - 10/12/1864 )",
+                           justiceName=="PPBarbour" ~ "Barbour, Philip ( 05/12/1836 - 02/25/1841 )",
+                           justiceName=="JCatron" ~ "Catron, John ( 05/01/1837 - 05/30/1865 )",
+                           justiceName=="JMcKinley" ~ "McKinley, John ( 04/22/1837 - 07/19/1852 )",
+                           justiceName=="PVDaniel" ~ "Daniel, Peter ( 01/10/1842 - 05/31/1860 )",
+                           justiceName=="SNelson" ~ "Nelson, Samuel ( 02/27/1845 - 11/28/1872 )",
+                           justiceName=="LWoodbury" ~ "Woodbury, Levi ( 09/23/1845 - 09/04/1851 )",
+                           justiceName=="RCGrier" ~ "Grier, Robert ( 08/10/1846 - 01/31/1870 )",
+                           justiceName=="BRCurtis" ~ "Curtis, Benjamin ( 10/10/1851 - 09/30/1857 )",
+                           justiceName=="JACampbell" ~ "Campbell, John ( 04/11/1853 - 04/30/1861 )",
+                           justiceName=="NClifford" ~ "Clifford, Nathan ( 01/21/1858 - 07/25/1881 )",
+                           justiceName=="NHSwayne" ~ "Swayne, Noah ( 01/27/1862 - 01/24/1881 )",
+                           justiceName=="SFMiller" ~ "Miller, Samuel ( 07/21/1862 - 10/13/1890 )",
+                           justiceName=="DDavis" ~ "Davis, David ( 10/17/1862 - 03/04/1877 )",
+                           justiceName=="SJField" ~ "Field, Stephen ( 05/20/1863 - 12/01/1897 )",
+                           justiceName=="SPChase" ~ "Chase, Salmon ( 12/15/1864 - 05/07/1873 )",
+                           justiceName=="WStrong" ~ "Strong, William ( 03/14/1870 - 12/14/1880 )",
+                           justiceName=="JPBradley" ~ "Bradley, Joseph ( 03/21/1870 - 01/22/1892 )",
+                           justiceName=="WHunt" ~ "Hunt, Ward ( 01/09/1873 - 01/27/1882 )",
+                           justiceName=="MRWaite" ~ "Waite, Morrison ( 03/04/1874 - 04/03/1888 )",
+                           justiceName=="JHarlan1" ~ "Harlan, John ( 12/10/1877 - 10/14/1911 )",
+                           justiceName=="WBWoods" ~ "Woods, William ( 01/05/1881 - 05/14/1887 )",
+                           justiceName=="SMatthews" ~ "Matthews, Stanley ( 05/17/1881 - 03/22/1889 )",
+                           justiceName=="HGray" ~ "Gray, Horace ( 01/09/1882 - 09/15/1902 )",
+                           justiceName=="SBlatchford" ~ "Blatchford, Samuel ( 04/03/1882 - 07/07/1893 )",
+                           justiceName=="LQLamar" ~ "Lamar, Lucius ( 01/18/1888 - 01/23/1893 )",
+                           justiceName=="MWFuller" ~ "Fuller, Melville ( 10/08/1888 - 07/04/1910 )",
+                           justiceName=="DJBrewer" ~ "Brewer, David ( 01/06/1890 - 03/28/1910 )",
+                           justiceName=="HBBrown" ~ "Brown, Henry ( 01/05/1891 - 05/28/1906 )",
+                           justiceName=="GShiras" ~ "Shiras, George ( 10/10/1892 - 02/23/1903 )",
+                           justiceName=="HEJackson" ~ "Jackson, Howell ( 03/04/1893 - 08/08/1895 )",
+                           justiceName=="EDEWhite" ~ "White, Edward ( 03/12/1894 - 05/19/1921 )",
+                           justiceName=="RWPeckham" ~ "Peckham, Rufus ( 01/06/1896 - 10/24/1909 )",
+                           justiceName=="JMcKenna" ~ "McKenna, Joseph ( 01/26/1898 - 01/05/1925 )",
+                           justiceName=="OWHolmes" ~ "Holmes, Oliver ( 08/11/1902 - 01/12/1932 )",
+                           justiceName=="WRDay" ~ "Day, William ( 03/02/1903 - 11/13/1922 )",
+                           justiceName=="WHMoody" ~ "Moody, William ( 12/17/1906 - 11/20/1910 )",
+                           justiceName=="HHLurton" ~ "Lurton, Horace ( 01/03/1910 - 07/12/1914 )",
+                           justiceName=="CEHughes1" ~ "Hughes, Charles ( 10/10/1910 - 06/10/1916 )",
+                           justiceName=="WVanDevanter" ~ "Van Devanter, Willis ( 01/03/1911 - 06/02/1937 )",
+                           justiceName=="JRLamar" ~ "Lamar, Joseph ( 01/03/1911 - 01/02/1916 )",
+                           justiceName=="MPitney" ~ "Pitney, Mahlon ( 03/18/1912 - 12/31/1922 )",
+                           justiceName=="JCMcReynolds" ~ "McReynolds, James ( 10/12/1914 - 01/31/1941 )",
+                           justiceName=="LDBrandeis" ~ "Brandeis, Louis ( 06/05/1916 - 02/13/1939 )",
+                           justiceName=="JHClarke" ~ "Clarke, John ( 10/09/1916 - 09/18/1922 )",
+                           justiceName=="WHTaft" ~ "Taft, William ( 07/11/1921 - 02/03/1930 )",
+                           justiceName=="GSutherland" ~ "Sutherland, George ( 10/02/1922 - 01/17/1938 )",
+                           justiceName=="PButler" ~ "Butler, Pierce ( 01/02/1923 - 11/16/1939 )",
+                           justiceName=="ETSanford" ~ "Sanford, Edward ( 02/19/1923 - 03/08/1930 )",
+                           justiceName=="HFStone" ~ "Stone, Harlan ( 03/02/1925 - 04/22/1946 )",
+                           justiceName=="CEHughes2" ~ "Hughes, Charles ( 02/24/1930 - 07/01/1941 )",
+                           justiceName=="OJRoberts" ~ "Roberts, Owen ( 06/02/1930 - 07/31/1945 )",
+                           justiceName=="BNCardozo" ~ "Cardozo, Benjamin ( 03/14/1932 - 07/09/1938 )",
+                           justiceName=="HLBlack" ~ "Black, Hugo ( 08/19/1937 - 09/17/1971 )",
+                           justiceName=="SFReed" ~ "Reed, Stanley ( 01/31/1938 - 02/25/1957 )",
+                           justiceName=="FFrankfurter" ~ "Frankfurter, Felix ( 01/30/1939 - 08/28/1962 )",
+                           justiceName=="WODouglas" ~ "Douglas, William ( 04/17/1939 - 11/12/1975 )",
+                           justiceName=="FMurphy" ~ "Murphy, Francis ( 02/05/1940 - 07/19/1949 )",
+                           justiceName=="JFByrnes" ~ "Byrnes, James ( 07/08/1941 - 10/03/1942 )",
+                           justiceName=="RHJackson" ~ "Jackson, Robert ( 07/11/1941 - 10/09/1954 )",
+                           justiceName=="WBRutledge" ~ "Rutledge, Wiley ( 02/15/1943 - 09/10/1949 )",
+                           justiceName=="HHBurton" ~ "Burton, Harold ( 10/01/1945 - 10/13/1958 )",
+                           justiceName=="FMVinson" ~ "Vinson, Fred ( 06/24/1946 - 09/08/1953 )",
+                           justiceName=="TCClark" ~ "Clark, Tom ( 08/24/1949 - 06/12/1967 )",
+                           justiceName=="SMinton" ~ "Minton, Sherman ( 10/12/1949 - 10/15/1956 )",
+                           justiceName=="EWarren" ~ "Warren, Earl ( 10/05/1953 - 06/23/1969 )",
+                           justiceName=="JHarlan2" ~ "Harlan, John ( 03/28/1955 - 09/23/1971 )",
+                           justiceName=="WJBrennan" ~ "Brennan, William ( 10/16/1956 - 07/20/1990 )",
+                           justiceName=="CEWhittaker" ~ "Whittaker, Charles ( 03/25/1957 - 03/31/1962 )",
+                           justiceName=="PStewart" ~ "Stewart, Potter ( 10/14/1958 - 07/03/1981 )",
+                           justiceName=="BRWhite" ~ "White, Byron ( 04/16/1962 - 06/28/1993 )",
+                           justiceName=="AJGoldberg" ~ "Goldberg, Arthur ( 10/01/1962 - 07/25/1965 )",
+                           justiceName=="AFortas" ~ "Fortas, Abe ( 10/04/1965 - 05/14/1969 )",
+                           justiceName=="TMarshall" ~ "Marshall, Thurgood ( 10/02/1967 - 10/01/1991 )",
+                           justiceName=="WEBurger" ~ "Burger, Warren ( 06/23/1969 - 09/26/1986 )",
+                           justiceName=="HABlackmun" ~ "Blackmun, Harry ( 06/09/1970 - 08/03/1994 )",
+                           justiceName=="LFPowell" ~ "Powell, Lewis ( 01/07/1972 - 06/26/1987 )",
+                           justiceName=="WHRehnquist" ~ "Rehnquist, William ( 01/07/1972 - 09/03/2005 )",
+                           justiceName=="JPStevens" ~ "Stevens, John ( 12/19/1975 - 06/29/2010 )",
+                           justiceName=="SDOConnor" ~ "O'Connor, Sandra ( 09/25/1981 - 01/31/2006 )",
+                           justiceName=="AScalia" ~ "Scalia, Antonin ( 09/26/1986 - 02/13/2016 )",
+                           justiceName=="AMKennedy" ~ "Kennedy, Anthony ( 02/18/1988 - 07/31/2018 )",
+                           justiceName=="DHSouter" ~ "Souter, David ( 10/09/1990 - 06/29/2009 )",
+                           justiceName=="CThomas" ~ "Thomas, Clarence ( 10/23/1991 - Present )",
+                           justiceName=="RBGinsburg" ~ "Ginsburg, Ruth ( 08/10/1993 - 09/18/2020 )",
+                           justiceName=="SGBreyer" ~ "Breyer, Stephen ( 08/03/1994 - Present )",
+                           justiceName=="JGRoberts" ~ "Roberts, John ( 09/29/2005 - Present )",
+                           justiceName=="SAAlito" ~ "Alito, Samuel ( 01/31/2006 - Present )",
+                           justiceName=="SSotomayor" ~ "Sotomayor, Sonia ( 08/08/2009 - Present )",
+                           justiceName=="EKagan" ~ "Kagan, Elena ( 08/07/2010 - Present )",
+                           justiceName=="NMGorsuch" ~ "Gorsuch, Neil ( 04/08/2017 - Present )",
+                           justiceName=="BMKavanaugh" ~ "Kavanaugh, Brett ( 10/06/2018 - Present )",
+                           justiceName=="ACBarrett" ~ "Barrett, Amy ( 10/27/2020 - Present )"))
+
+# get our JUSTICE scores by justice
+justice_JUSTICEscores <- d2 %>%
+  group_by(justice,court,year) %>%
+  summarize(total_vote = sum(justice_vote != "a"),
+            num_liberal = sum(justice_vote == "Liberal")/total_vote,
+            num_conservative = sum(justice_vote == "Conservative")/total_vote,
+            JUSTICE_score = num_conservative-num_liberal) %>%
+  mutate(justice_year=year) %>%
+  select(justice,justice_year,JUSTICE_score)
+
+# get JUSTICE scores by court
+court_JUSTICEscores <- d2 %>%
+  group_by(court,year) %>%
+  summarize(total_vote = sum(justice_vote != "a"),
+            court_num_liberal = sum(justice_vote == "Liberal")/total_vote,
+            court_num_conservative = sum(justice_vote == "Conservative")/total_vote,
+            court_JUSTICE_score = court_num_conservative-court_num_liberal)%>%
+  mutate(court_year=year) %>%
+  select(court,court_year,court_JUSTICE_score)
+
+# get all time JUSTICE scores by justice
+justice_alltime_JUSTICEscores <- d2 %>%
+  group_by(justice) %>%
+  summarize(total_vote = sum(justice_vote != "a"),
+            num_liberal = sum(justice_vote == "Liberal")/total_vote,
+            num_conservative = sum(justice_vote == "Conservative")/total_vote,
+            cumulative_JUSTICE_score = num_conservative-num_liberal) %>%
+  select(justice,cumulative_JUSTICE_score)
+
+# combine the court and justice yearly
+JUSTICEscores_justices_court <- justice_JUSTICEscores %>%
+  left_join(court_JUSTICEscores,by="court") %>%
+  filter(justice_year==court_year)
+
+# add in the cumulative scores
+JUSTICEscores <- JUSTICEscores_justices_court %>%
+  left_join(justice_alltime_JUSTICEscores,by="justice") %>%
+  filter(JUSTICE_score!=1,JUSTICE_score!=-1) %>%
+  mutate(score_diff_from_cumulative=JUSTICE_score-cumulative_JUSTICE_score) 
+
+save(JUSTICEscores,file="data/JUSTICEscores.csv")
+
+#g raph the data
+p <- JUSTICEscores %>%
+  ggplot() +
+  geom_point(size=1,alpha=0.8,mapping=aes(color=court,x=justice_year,y=JUSTICE_score,justice=justice,cumulative_JUSTICE_score=cumulative_JUSTICE_score,score_diff_from_cumulative=score_diff_from_cumulative)) +
+  geom_smooth(mapping=aes(x=justice_year,y=JUSTICE_score)) +
+  geom_path(mapping=aes(x=justice_year,y=JUSTICE_score,group=justice,color=justice)) +
+  geom_col(mapping=aes(x=court_year,y=court_JUSTICE_score/12,fill=court,court_JUSTICE_score=court_JUSTICE_score),alpha=0.4) +
+  geom_hline(yintercept=0,linetype="dashed") +
+  guides(color="none") +
+  theme_minimal() +
+  labs(title="Ideology of the Supreme Court over time by justice | By Micah Shannon
+       Data from: Harold J. Spaeth, Lee Epstein, Andrew D. Martin, Jeffrey A. Segal, Theodore J. Ruger, and 
+       Sara C. Benesh. 2020 Supreme Court Database, Version 2021 Release 01.
+       URL: http://Supremecourtdatabase.org",y="JUSTICE score",x="Year",color="Court/Justice",fill="Court",)
+
+ggsave("JUSTICE_scores_by_justice_by_year.png")
+
+#m ake it *INTERACTIVE*
+plotly <- ggplotly(p=p,tooltip=c("justice","JUSTICE_score","justice_year","court","court_JUSTICE_score","court_year","cumulative_JUSTICE_score","score_diff_from_cumulative")) %>%
+  layout(showlegend=TRUE)
+
+plotly <- plotly_build(plotly)
+
+#make all the justice lines invisible by default
+
+plotly$x$data[[18]]$visible <- "legendonly"
+plotly$x$data[[19]]$visible <- "legendonly"
+plotly$x$data[[20]]$visible <- "legendonly"
+plotly$x$data[[21]]$visible <- "legendonly"
+plotly$x$data[[22]]$visible <- "legendonly"
+plotly$x$data[[23]]$visible <- "legendonly"
+plotly$x$data[[24]]$visible <- "legendonly"
+plotly$x$data[[25]]$visible <- "legendonly"
+plotly$x$data[[26]]$visible <- "legendonly"
+plotly$x$data[[27]]$visible <- "legendonly"
+plotly$x$data[[28]]$visible <- "legendonly"
+plotly$x$data[[29]]$visible <- "legendonly"
+plotly$x$data[[30]]$visible <- "legendonly"
+plotly$x$data[[31]]$visible <- "legendonly"
+plotly$x$data[[32]]$visible <- "legendonly"
+plotly$x$data[[33]]$visible <- "legendonly"
+plotly$x$data[[34]]$visible <- "legendonly"
+plotly$x$data[[35]]$visible <- "legendonly"
+plotly$x$data[[36]]$visible <- "legendonly"
+plotly$x$data[[37]]$visible <- "legendonly"
+plotly$x$data[[38]]$visible <- "legendonly"
+plotly$x$data[[39]]$visible <- "legendonly"
+plotly$x$data[[40]]$visible <- "legendonly"
+plotly$x$data[[41]]$visible <- "legendonly"
+plotly$x$data[[42]]$visible <- "legendonly"
+plotly$x$data[[43]]$visible <- "legendonly"
+plotly$x$data[[44]]$visible <- "legendonly"
+plotly$x$data[[45]]$visible <- "legendonly"
+plotly$x$data[[46]]$visible <- "legendonly"
+plotly$x$data[[47]]$visible <- "legendonly"
+plotly$x$data[[48]]$visible <- "legendonly"
+plotly$x$data[[49]]$visible <- "legendonly"
+plotly$x$data[[50]]$visible <- "legendonly"
+plotly$x$data[[51]]$visible <- "legendonly"
+plotly$x$data[[52]]$visible <- "legendonly"
+plotly$x$data[[53]]$visible <- "legendonly"
+plotly$x$data[[54]]$visible <- "legendonly"
+plotly$x$data[[55]]$visible <- "legendonly"
+plotly$x$data[[56]]$visible <- "legendonly"
+plotly$x$data[[57]]$visible <- "legendonly"
+plotly$x$data[[58]]$visible <- "legendonly"
+plotly$x$data[[59]]$visible <- "legendonly"
+plotly$x$data[[60]]$visible <- "legendonly"
+plotly$x$data[[61]]$visible <- "legendonly"
+plotly$x$data[[62]]$visible <- "legendonly"
+plotly$x$data[[63]]$visible <- "legendonly"
+plotly$x$data[[64]]$visible <- "legendonly"
+plotly$x$data[[65]]$visible <- "legendonly"
+plotly$x$data[[66]]$visible <- "legendonly"
+plotly$x$data[[67]]$visible <- "legendonly"
+plotly$x$data[[68]]$visible <- "legendonly"
+plotly$x$data[[69]]$visible <- "legendonly"
+plotly$x$data[[70]]$visible <- "legendonly"
+plotly$x$data[[71]]$visible <- "legendonly"
+plotly$x$data[[72]]$visible <- "legendonly"
+plotly$x$data[[73]]$visible <- "legendonly"
+plotly$x$data[[74]]$visible <- "legendonly"
+plotly$x$data[[75]]$visible <- "legendonly"
+plotly$x$data[[76]]$visible <- "legendonly"
+plotly$x$data[[77]]$visible <- "legendonly"
+plotly$x$data[[78]]$visible <- "legendonly"
+plotly$x$data[[79]]$visible <- "legendonly"
+plotly$x$data[[80]]$visible <- "legendonly"
+plotly$x$data[[81]]$visible <- "legendonly"
+plotly$x$data[[82]]$visible <- "legendonly"
+plotly$x$data[[83]]$visible <- "legendonly"
+plotly$x$data[[84]]$visible <- "legendonly"
+plotly$x$data[[85]]$visible <- "legendonly"
+plotly$x$data[[86]]$visible <- "legendonly"
+plotly$x$data[[87]]$visible <- "legendonly"
+plotly$x$data[[88]]$visible <- "legendonly"
+plotly$x$data[[89]]$visible <- "legendonly"
+plotly$x$data[[90]]$visible <- "legendonly"
+plotly$x$data[[91]]$visible <- "legendonly"
+plotly$x$data[[92]]$visible <- "legendonly"
+plotly$x$data[[93]]$visible <- "legendonly"
+plotly$x$data[[94]]$visible <- "legendonly"
+plotly$x$data[[95]]$visible <- "legendonly"
+plotly$x$data[[96]]$visible <- "legendonly"
+plotly$x$data[[97]]$visible <- "legendonly"
+plotly$x$data[[98]]$visible <- "legendonly"
+plotly$x$data[[99]]$visible <- "legendonly"
+plotly$x$data[[100]]$visible <- "legendonly"
+plotly$x$data[[101]]$visible <- "legendonly"
+plotly$x$data[[102]]$visible <- "legendonly"
+plotly$x$data[[103]]$visible <- "legendonly"
+plotly$x$data[[104]]$visible <- "legendonly"
+plotly$x$data[[105]]$visible <- "legendonly"
+plotly$x$data[[106]]$visible <- "legendonly"
+plotly$x$data[[107]]$visible <- "legendonly"
+plotly$x$data[[108]]$visible <- "legendonly"
+plotly$x$data[[109]]$visible <- "legendonly"
+plotly$x$data[[110]]$visible <- "legendonly"
+plotly$x$data[[111]]$visible <- "legendonly"
+plotly$x$data[[112]]$visible <- "legendonly"
+plotly$x$data[[113]]$visible <- "legendonly"
+plotly$x$data[[114]]$visible <- "legendonly"
+plotly$x$data[[115]]$visible <- "legendonly"
+plotly$x$data[[116]]$visible <- "legendonly"
+plotly$x$data[[117]]$visible <- "legendonly"
+plotly$x$data[[118]]$visible <- "legendonly"
+plotly$x$data[[119]]$visible <- "legendonly"
+plotly$x$data[[120]]$visible <- "legendonly"
+plotly$x$data[[121]]$visible <- "legendonly"
+plotly$x$data[[122]]$visible <- "legendonly"
+plotly$x$data[[123]]$visible <- "legendonly"
+plotly$x$data[[124]]$visible <- "legendonly"
+plotly$x$data[[125]]$visible <- "legendonly"
+plotly$x$data[[126]]$visible <- "legendonly"
+plotly$x$data[[127]]$visible <- "legendonly"
+plotly$x$data[[128]]$visible <- "legendonly"
+plotly$x$data[[129]]$visible <- "legendonly"
+plotly$x$data[[130]]$visible <- "legendonly"
+plotly$x$data[[131]]$visible <- "legendonly"
+plotly$x$data[[132]]$visible <- "legendonly"
+
+#plot our plotly!
+plotly
+
+# save file
+plotly %>%
+  htmlwidgets::saveWidget(file="output/JUSTICEscores.html")
+
+#fín!
+```
+# References
+
+Harold J. Spaeth, Lee Epstein, Andrew D. Martin, Jeffrey A. Segal, Theodore J. Ruger, and 
+       Sara C. Benesh. 2020 Supreme Court Database, Version 2021 Release 01.
+       URL: http://Supremecourtdatabase.org"
+
+
+
+
+
+
+
+
+
+
+
+
