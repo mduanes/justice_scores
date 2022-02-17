@@ -4,4 +4,4 @@ Measure of U.S. supreme court ideology over time. Final Project for POLS 3220 Po
 TO USE: 
 1. Unzip the zip archive found in main/data
 2. Open the RMarkdown File
-3. Knit to HTML of PDF
+3. Knit to HTML
