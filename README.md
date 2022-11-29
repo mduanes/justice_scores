@@ -1,5 +1,5 @@
 # justice_scores
-Measure of U.S. supreme court ideology over time. Final Project for POLS 3220 Political Analysis in R
+Final Project for POLS 3220 Political Analysis in R. Measure of U.S. supreme court ideology over time using data from Washington University Law's database which assigns decisions an ideology value. Liberal and conservative scores were calculated for each justice and for each court by subtracting liberal score from conservative score. Final plot was created with plotly and ggplot2.
 
 TO USE: 
 1. Unzip the zip archive found in main/data
